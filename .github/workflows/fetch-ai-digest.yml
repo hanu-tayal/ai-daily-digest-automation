@@ -1,0 +1,59 @@
+# Fetch AI newsletter content daily and commit to repo
+# Runs at 6:00 AM UTC; creates digest, summary, MP3, and sends email reminder
+
+name: Fetch AI Daily Digest
+
+on:
+  schedule:
+    # 6:00 AM UTC daily (10 PM PST / 11 PM PDT)
+    - cron: "0 6 * * *"
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Required to push
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Fetch digest
+        run: python scripts/fetch_ai_digest.py
+
+      - name: Summarize for NotebookLM
+        run: python scripts/summarize_ai_digest.py
+
+      - name: Generate MP3
+        run: python scripts/text_to_speech_digest.py
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add output/
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore(digest): update AI daily digest $(date -u +%Y-%m-%d)"
+            git push
+          fi
+
+      - name: Send daily email
+        if: ${{ secrets.RESEND_API_KEY != '' }}
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          DIGEST_EMAIL: ${{ secrets.DIGEST_EMAIL }}
+          REPO_RAW: ${{ secrets.REPO_RAW }}
+        run: |
+          export DIGEST_EMAIL="${DIGEST_EMAIL:-hanutayal@gmail.com}"
+          python scripts/send_digest_email.py

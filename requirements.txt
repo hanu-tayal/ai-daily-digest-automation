@@ -1,0 +1,8 @@
+# RSS fetching for fetch_ai_digest.py
+feedparser>=6.0.0
+
+# TTS for digest audio (text_to_speech_digest.py)
+edge-tts>=6.0.0
+
+# Email for digest reminder (send_digest_email.py)
+resend>=2.0.0
